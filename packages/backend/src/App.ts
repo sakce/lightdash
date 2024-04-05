@@ -30,7 +30,6 @@ import EmailClient from './clients/EmailClient/EmailClient';
 import { GoogleDriveClient } from './clients/Google/GoogleDriveClient';
 import { SlackBot } from './clients/Slack/Slackbot';
 import { SlackClient } from './clients/Slack/SlackClient';
-import { buildJwtKeySet } from './config/jwtKeySet';
 import { LightdashConfig } from './config/parseConfig';
 import {
     apiKeyPassportStrategy,
@@ -60,6 +59,7 @@ import {
     ServiceProviderMap,
     ServiceRepository,
 } from './services/ServiceRepository';
+import { UtilProviderMap, UtilRepository } from './utils/UtilRepository';
 import { VERSION } from './version';
 
 // We need to override this interface to have our user typing
@@ -89,6 +89,7 @@ type AppArguments = {
         development: Knex.Config<Knex.PgConnectionConfig>;
     };
     modelProviders?: ModelProviderMap;
+    utilProviders?: UtilProviderMap;
 };
 
 export default class App {
@@ -105,6 +106,8 @@ export default class App {
     private readonly environment: 'production' | 'development';
 
     private schedulerWorker: SchedulerWorker | undefined;
+
+    private readonly utils: UtilRepository;
 
     private readonly clients: ClientManifest;
 
@@ -134,10 +137,15 @@ export default class App {
                 ? args.knexConfig.production
                 : args.knexConfig.development,
         );
+        this.utils = new UtilRepository({
+            utilProviders: args.utilProviders,
+            lightdashConfig: this.lightdashConfig,
+        });
         this.models = new ModelRepository({
             modelProviders: args.modelProviders,
             lightdashConfig: this.lightdashConfig,
             database: this.database,
+            utils: this.utils,
         });
         this.clients = {
             dbtCloudGraphqlClient: new DbtCloudGraphqlClient(),
